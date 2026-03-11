@@ -3,7 +3,7 @@
 // =========================
 
 // 👉 Poner la TMDB API KEY v3. NO SUBIR a GitHub.
-const API_KEY = "1e41d5f770aa0d7656e3e3f19f62ce1d";
+const API_KEY = "";
 
 // =========================
 // 0.x) SANITIZADOR DE RESULTADOS (PATCH)
@@ -1142,4 +1142,5 @@ renderBoard();
 
 updateTurnInfo();
 updateScoreInfo();
+
 applyTheme();
