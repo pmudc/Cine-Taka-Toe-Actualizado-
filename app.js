@@ -9,7 +9,7 @@ const API_KEY = "";
 // 0.x) SANITIZADOR DE RESULTADOS (PATCH)
 // =========================
 
-// 🚫 Películas “problemáticas”
+// 🚫 Bloqueo de Final Cut: Ladies & Gentlemen
 const BLOCKED_MOVIE_IDS = [
   13610, // Final Cut: Ladies & Gentlemen (2012) - mashup
   // Si vemos otro ID en consola, lo añadimos aquí
@@ -1144,3 +1144,4 @@ updateTurnInfo();
 updateScoreInfo();
 
 applyTheme();
+
