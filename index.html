@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Cine Taka Toe</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+
+<body>
+  <main class="container">
+    <h1>🎬 Cine Taka Toe</h1>
+
+    <!-- TABLERO -->
+    <section class="card">
+      <div style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
+        <h2 style="margin:0;">Partida</h2>
+
+        <details style="opacity:.9;">
+        <summary style="cursor:pointer;">¿Cómo se juega?</summary>
+        <div style="margin-top:8px; font-size: 13px; opacity:.9; max-width: 520px;">
+      <ol style="margin:0; padding-left:18px;">
+        <li>Pulsa <strong>Nueva partida</strong>.</li>
+        <li>Selecciona una casilla del tablero.</li>
+        <li>Busca una peli y pulsa <strong>Usar esta peli</strong>.</li>
+      </ol>
+      <div style="margin-top:6px; opacity:.8;">
+        Tip: si se agota el tiempo o pulsas <strong>Saltar turno</strong>, pasa al otro jugador.
+       </div>
+      </div>
+     </details>
+     </div>
+
+      <!-- ✅ AQUÍ VA EL BOTÓN + DIFICULTAD -->
+      <div class="row">
+        <label style="display:flex;align-items:center;gap:8px;opacity:.9;">
+        Modo:
+        <select id="timeMode" title="Tiempo máximo por turno">
+        <option value="0" selected>Sin tiempo</option>
+        <option value="15">15 segundos</option>
+        <option value="30">30 segundos</option>
+        <option value="60">1 minuto</option>
+      </select>
+     </label>
+        <button id="btnNewGame">Nueva partida</button>
+        <button id="btnSkipTurn" title="Pasar turno sin jugar">Saltar turno</button>
+        <button id="btnCompleteNow" title="Rellenar automáticamente casillas vacías">Completar tablero</button>
+
+     <label style="display:flex;align-items:center;gap:8px;opacity:.9;">
+        Mínimo de películas válidas por casilla:
+        <select id="difficulty" title="Cuanto más alto, más opciones tendrá cada casilla (y más tardará en generar).">
+        <option value="1" selected>1 (recomendado)</option>
+        <option value="5">5</option>
+        <option value="10">10</option>
+      </select>
+     </label>
+      </div>
+
+      <p id="turnInfo" class="status">Turno: Azul 🔵</p>
+      <p id="timerInfo" class="status">⏱️ Tiempo: ∞</p>
+      <p id="scoreInfo" class="status score">Marcador: Azul 0 - 0 Rojo</p>
+
+      <div id="board" class="boardWithHeaders"></div>
+      <p id="status" class="status">Pulsa “Nueva partida” para generar categorías.</p>
+    </section>
+
+    <!-- BUSCADOR DE PELÍCULAS -->
+    <section class="card">
+      <h2>Buscar película</h2>
+      <div class="row">
+        <input id="query" placeholder="Ej: Heat, Scarface, Inception..." />
+        <button id="btnBuscar">Buscar</button>
+      </div>
+
+      <div id="results" class="grid"></div>
+    </section>
+
+    <!-- AYUDA: BUSCAR ID DE PERSONA (actor/director) -->
+    <details class="card">
+  <summary><strong>Herramientas (dev): buscar ID de actor/director</strong></summary>
+
+  <h2 style="margin-top:12px;">Ayuda rápida: encontrar ID de actor/director</h2>
+  <p>Escribe un nombre (ej: Al Pacino) y te doy su ID (personId) para las reglas.</p>
+
+  <div class="row">
+    <input id="personQuery" placeholder="Ej: Al Pacino, Scorsese..." />
+    <button id="btnPerson">Buscar ID</button>
+  </div>
+
+  <div id="personResults" class="grid"></div>
+</details>
+  </main>
+
+  <!-- MODAL FIN DE PARTIDA -->
+<div id="endModal" class="modal hidden">
+  <div class="modalBox">
+    <h2 id="endTitle">Fin de partida</h2>
+    <p id="endText"></p>
+
+    <div class="row" style="justify-content:flex-end;">
+      <button id="btnContinue">Seguir jugando</button>
+      <button id="btnComplete">Completar</button>
+      <button id="btnNewFromModal">Nueva partida</button>
+    </div>
+  </div>
+ </div>
+
+ <!-- MODAL INICIO (MODO DE JUEGO) -->
+<div id="startModal" class="modal">
+  <div class="modalBox">
+    <h2>🎬 Elige modo de juego</h2>
+    <p>Selecciona el tiempo máximo por turno:</p>
+
+    <div class="row">
+      <select id="startTimeMode">
+        <option value="0" selected>Sin tiempo</option>
+        <option value="15">15 segundos</option>
+        <option value="30">30 segundos</option>
+        <option value="60">1 minuto</option>
+      </select>
+      <button id="btnStartGame">Empezar</button>
+    </div>
+
+    <p class="status" style="opacity:.8;">
+      Tip: Puedes cambiarlo después, pero aquí empieza la partida con ese modo.
+    </p>
+  </div>
+</div>
+  <script src="app.js"></script>
+</body>
+</html>

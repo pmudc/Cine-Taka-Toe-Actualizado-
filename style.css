@@ -1,0 +1,244 @@
+body { font-family: system-ui, Arial; margin: 0; background:#0b0f1a; color:#e8eefc; }
+.container { max-width: 1000px; margin: 0 auto; padding: 24px; }
+.card { background:#121a2b; padding: 16px; border-radius: 12px; border:1px solid #253457; margin-bottom: 16px; }
+.row { display:flex; gap: 10px; margin: 10px 0; }
+input { flex:1; padding: 10px; border-radius: 8px; border:1px solid #2f416d; background:#0b1222; color:#e8eefc; }
+button { padding: 10px 14px; border-radius: 8px; border:0; background:#4f7cff; color:white; font-weight:600; cursor:pointer; }
+button:hover { filter: brightness(1.1); }
+
+.status { opacity:.9; margin: 10px 0 0; }
+
+.grid { display:grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 12px; margin-top: 12px; }
+
+.item { background:#0b1222; border:1px solid #2a3a60; border-radius: 10px; padding: 10px; display:flex; flex-direction:column; gap:8px; }
+.item img { width:100%; border-radius: 8px; aspect-ratio: 2/3; object-fit: cover; background:#060a12; }
+.item h3 { margin: 0; font-size: 14px; }
+.item p { margin: 0; opacity: .8; font-size: 12px; }
+.item .useBtn { width: 100%; }
+
+.board { display:grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 12px; }
+.cell {
+  min-height: 150px; border:1px solid #2a3a60; border-radius: 10px;
+  background:#0b1222; padding:10px; cursor:pointer;
+  display:flex; flex-direction:column; justify-content:center; align-items:center; gap:8px;
+}
+.cell.selected { outline: 3px solid #4f7cff; }
+.cell small { opacity: .75; text-align:center; }
+.cell img { width: 80px; border-radius: 8px; }
+
+select {
+  padding: 8px;
+  border-radius: 8px;
+  border: 1px solid #2f416d;
+  background:#0b1222;
+  color:#e8eefc;
+}
+
+/* --- TURNOS / COLORES --- */
+.turnBlue { color: #4f7cff; font-weight: 700; }
+.turnRed { color: #ff4f6d; font-weight: 700; }
+
+.cell.blue { outline: 2px solid rgba(79,124,255,.8); }
+.cell.red  { outline: 2px solid rgba(255,79,109,.8); }
+
+/* --- MODAL FIN PARTIDA --- */
+.modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 999;
+}
+.modal.hidden { display: none; }
+
+.modalBox {
+  width: min(700px, 92vw);
+  background: #121a2b;
+  border: 1px solid #253457;
+  border-radius: 14px;
+  padding: 18px;
+}
+.modalBox h2 { margin-top: 0; }
+
+.score { font-weight: 800; letter-spacing: .3px; }
+
+.timerWarn { color: #ff4f6d; font-weight: 800; }
+
+/* TABLERO CON CABECERAS (tipo Tiki Taka Toe) */
+.boardWithHeaders {
+  display: grid;
+  grid-template-columns: 170px repeat(3, 1fr); /* izquierda = filas */
+  grid-template-rows: 110px repeat(3, 1fr);   /* arriba = columnas */
+  gap: 10px;
+  margin-top: 12px;
+}
+
+/* Esquina */
+.corner {
+  background:#0b1222;
+  border:1px solid #2a3a60;
+  border-radius: 10px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-weight: 800;
+  letter-spacing: .4px;
+  opacity: .95;
+}
+
+/* Cabeceras */
+.hdr {
+  background:#0b1222;
+  border:1px solid #2a3a60;
+  border-radius: 10px;
+  padding: 10px;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  text-align:center;
+  gap: 6px;
+}
+
+.hdr .hdrTitle {
+  font-weight: 800;
+  font-size: 14px;
+}
+
+.hdr .hdrSub {
+  font-size: 12px;
+  opacity: .8;
+}
+
+/* Celdas jugables (reusa tu estilo .cell, pero ajusta) */
+.boardWithHeaders .cell {
+  min-height: 150px;
+}
+
+/* Responsive: en móvil reducimos cabeceras */
+@media (max-width: 700px) {
+  .boardWithHeaders {
+    grid-template-columns: 120px repeat(3, 1fr);
+    grid-template-rows: 90px repeat(3, 1fr);
+  }
+  .hdr .hdrTitle { font-size: 13px; }
+  .hdr .hdrSub { font-size: 11px; }
+}
+
+/* ===== FONDO DINÁMICO POR TURNO ===== */
+body {
+  transition: background 250ms ease, background-color 400ms ease;
+}
+
+/* Azul */
+body.theme-blue {
+  background:
+    radial-gradient(900px 450px at 15% 10%, rgba(79,124,255,.25), rgba(0,0,0,0) 60%),
+    radial-gradient(700px 400px at 85% 25%, rgba(79,124,255,.16), rgba(0,0,0,0) 55%),
+    #0b0f1a;
+}
+
+/* Rojo */
+body.theme-red {
+  background:
+    radial-gradient(900px 450px at 15% 10%, rgba(255,79,109,.25), rgba(0,0,0,0) 60%),
+    radial-gradient(700px 400px at 85% 25%, rgba(255,79,109,.16), rgba(0,0,0,0) 55%),
+    #0b0f1a;
+}
+
+/* Neutro (opcional): por ejemplo al arrancar antes de nueva partida) */
+body.theme-neutral {
+  background: #0b0f1a;
+}
+
+/* =========================
+   FONDO DINÁMICO POR TURNO (BESTIA)
+   ========================= */
+
+/* Variables base (neutro) */
+:root{
+  --accent: rgba(79,124,255,.0);
+  --accent2: rgba(79,124,255,.0);
+  --accentSolid: #4f7cff;
+}
+
+/* Por defecto */
+body{
+  background:#0b0f1a;
+  transition: background 350ms ease;
+  position: relative;
+}
+
+/* Capa overlay que “tiñe” el fondo */
+body::before{
+  content:"";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+
+  /* Glow fuerte + tinte */
+  background:
+    radial-gradient(1200px 650px at 15% 10%, var(--accent), rgba(0,0,0,0) 60%),
+    radial-gradient(1000px 600px at 85% 20%, var(--accent2), rgba(0,0,0,0) 55%),
+    linear-gradient(180deg, rgba(0,0,0,.10), rgba(0,0,0,.35));
+  opacity: 1;
+  transition: background 350ms ease;
+}
+
+/* Asegura que tu contenido esté por encima del overlay */
+.container{
+  position: relative;
+  z-index: 1;
+}
+
+/* Tema AZUL (sube opacidades para que cante) */
+body.theme-blue{
+  --accent: rgba(79,124,255,.55);
+  --accent2: rgba(79,124,255,.35);
+  --accentSolid: #4f7cff;
+}
+
+/* Tema ROJO */
+body.theme-red{
+  --accent: rgba(255,79,109,.55);
+  --accent2: rgba(255,79,109,.35);
+  --accentSolid: #ff4f6d;
+}
+
+/* Neutro (por ejemplo antes de empezar o empate) */
+body.theme-neutral{
+  --accent: rgba(0,0,0,0);
+  --accent2: rgba(0,0,0,0);
+  --accentSolid: #4f7cff;
+}
+
+/* BONUS: borde brillante alrededor de toda la app */
+.container{
+  border-radius: 16px;
+}
+
+/* BONUS: que las cards también “respiren” con el turno */
+.card{
+  transition: border-color 250ms ease, box-shadow 250ms ease;
+}
+body.theme-blue .card{
+  border-color: rgba(79,124,255,.22);
+  box-shadow: 0 0 0 1px rgba(79,124,255,.10), 0 12px 40px rgba(79,124,255,.08);
+}
+body.theme-red .card{
+  border-color: rgba(255,79,109,.22);
+  box-shadow: 0 0 0 1px rgba(255,79,109,.10), 0 12px 40px rgba(255,79,109,.08);
+}
+
+.cornerLogo{
+  width: 90px;
+  height: auto;
+  object-fit: contain;
+  display: block;
+}
+
+body.theme-blue .cornerLogo { filter: drop-shadow(0 0 14px rgba(79,124,255,.45)); }
+body.theme-red  .cornerLogo { filter: drop-shadow(0 0 14px rgba(255,79,109,.45)); }
