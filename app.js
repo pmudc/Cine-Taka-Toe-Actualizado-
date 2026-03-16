@@ -3,20 +3,21 @@
 // =========================
 
 // 👉 Poner la TMDB API KEY v3. NO SUBIR a GitHub.
-const API_KEY = "";
+const API_KEY = "1e41d5f770aa0d7656e3e3f19f62ce1d";
 
 // =========================
 // 0.x) SANITIZADOR DE RESULTADOS (PATCH)
 // =========================
 
-// 🚫 Bloqueo de Final Cut: Ladies & Gentlemen
+// 🚫 Películas “problemáticas”
 const BLOCKED_MOVIE_IDS = [
   13610, // Final Cut: Ladies & Gentlemen (2012) - mashup
-  // Si vemos otro ID en consola, lo añadimos aquí
+  75009, // The Concert for New York City
 ];
 
 // Bloqueo por título/original_title (cubre variantes y traducciones)
-const BLOCKED_TITLE_REGEX = /final\s*cut.*ladies|hölgyeim|final\s*cut:\s*ladies/i;
+const BLOCKED_TITLE_REGEX =
+  /final\s*cut.*ladies|hölgyeim|final\s*cut:\s*ladies|concert\s*for\s*new\s*york/i;
 
 function isBlockedMovieLike(m) {
   const id = Number(m?.id);
@@ -404,11 +405,10 @@ function renderMovieResults(data) {
     const el = document.createElement("div");
     el.className = "item";
     el.innerHTML = `
-      ${posterUrl ? `<img src="${posterUrl}" alt="${(m.title || "").replaceAll('"', "")}">` : `<div style="height:260px"></div>`}
-      <h3>${m.title || "Sin título"}</h3>
-      <p>${(m.release_date || "").slice(0, 4) || "¿?"}</p>
-      <button class="useBtn">Usar esta peli</button>
-    `;
+    ${posterUrl ? `<img src="${posterUrl}" alt="${(m.title || "").replaceAll('"', "")}">` : `<div style="height:260px"></div>`}
+    <h3>${m.title || "Sin título"}</h3>
+    <button class="useBtn">Usar esta peli</button>
+  `;
 
     el.querySelector(".useBtn").addEventListener("click", () => {
       onPickMovie(m.id, m.title, posterUrl);
@@ -495,9 +495,11 @@ function renderBoard() {
 
       if (movie) {
         cell.innerHTML = `
-          ${movie.poster ? `<img src="${movie.poster}" alt="${movie.title.replaceAll('"', "")}">` : ""}
-          <strong>${movie.title}</strong>
+        ${movie.poster ? `<img src="${movie.poster}" alt="${movie.title.replaceAll('"', "")}">` : ""}
+        <strong>${movie.title}</strong>
+        ${movie.year ? `<small>${movie.year}</small>` : ""}
         `;
+
       } else {
         // celda vacía: solo muestra "elige" para que quede clean
         cell.innerHTML = `<strong>+</strong><small>Elegir</small>`;
@@ -555,32 +557,78 @@ function checkRule(movie, rule) {
   }
 }
 
-// Encuentra automáticamente una peli válida para una casilla (fila+col)
-async function findValidMovieForCell(rr, cc, maxCandidates = 25) {
-  const params = mergeDiscoverParams(ruleToDiscoverParams(rr), ruleToDiscoverParams(cc));
-  const data = await discoverList(params);
+function getMovieYear(movie) {
+  const year = parseInt((movie.release_date || "").slice(0, 4), 10);
+  return Number.isNaN(year) ? null : year;
+}
 
-  // PATCH: filtrar Final Cut ANTES de usar candidatos
-  data.results = sanitizeResults(data.results || []);
+function describeDecadeRule(rule) {
+  if (!rule || rule.type !== "decade") return "";
+  return rule.label || `Años ${String(rule.from).slice(2)}`;
+}
 
-  const candidates = (data.results || []).slice(0, maxCandidates);
+function getDecadeFailureDetail(movie, rule, whereText) {
+  if (!rule || rule.type !== "decade") return "";
+  const year = getMovieYear(movie);
 
-  for (const cand of candidates) {
-    // PATCH: por si viniera algo raro, re-bloqueo por ID/título
-    if (isBlockedMovieLike(cand)) continue;
-
-    const full = await getMovieFull(cand.id);
-
-    // PATCH: y bloqueo también tras expandir (por si el título original del full coincide)
-    if (isBlockedMovieLike(full)) continue;
-
-    if (checkRule(full, rr) && checkRule(full, cc)) {
-      const poster = cand.poster_path ? `https://image.tmdb.org/t/p/w342${cand.poster_path}` : "";
-      return { id: cand.id, title: cand.title || full.title, poster };
-    }
+  if (year === null) {
+    return ` (${whereText} pedía ${describeDecadeRule(rule)} y la peli no tiene año conocido)`;
   }
 
-  return null;
+  return ` (${whereText} pedía ${describeDecadeRule(rule)} y la peli es de ${year})`;
+}
+
+async function getRealMatchesForCell(rr, cc, minNeeded = 1, maxPages = 3, maxCandidatesPerPage = 20) {
+  const params = mergeDiscoverParams(ruleToDiscoverParams(rr), ruleToDiscoverParams(cc));
+  const matches = [];
+  const seenIds = new Set();
+
+  for (let page = 1; page <= maxPages; page++) {
+    const data = await discoverList({ ...params, page: String(page) });
+    const candidates = sanitizeResults(data.results || []).slice(0, maxCandidatesPerPage);
+
+    for (const cand of candidates) {
+      if (!cand?.id) continue;
+      if (seenIds.has(cand.id)) continue;
+      seenIds.add(cand.id);
+
+      try {
+        const full = await getMovieFull(cand.id);
+
+        if (isBlockedMovieLike(full)) continue;
+
+        if (checkRule(full, rr) && checkRule(full, cc)) {
+          const poster = cand.poster_path ? `https://image.tmdb.org/t/p/w342${cand.poster_path}` : "";
+          const year = (full.release_date || "").slice(0, 4) || "";
+
+          matches.push({
+            id: cand.id,
+            title: cand.title || full.title || "Sin título",
+            poster,
+            year
+          });
+
+          if (matches.length >= minNeeded) {
+            return matches;
+          }
+        }
+      } catch (e) {
+        console.warn("Error validando candidata real:", cand?.id, e);
+      }
+    }
+
+    // si no hay más resultados útiles, paramos
+    if (!(data.results || []).length) break;
+    if (page >= (data.total_pages || 1)) break;
+  }
+
+  return matches;
+}
+
+// Encuentra automáticamente una peli válida para una casilla (fila+col)
+async function findValidMovieForCell(rr, cc) {
+  const matches = await getRealMatchesForCell(rr, cc, 1, 4, 20);
+  return matches[0] || null;
 }
 
 async function completeBoard() {
@@ -595,7 +643,7 @@ async function completeBoard() {
       for (let c = 0; c < 3; c++) {
         if (placed[r][c]) continue;
 
-        const found = await findValidMovieForCell(rowRules[r], colRules[c], 25);
+        const found = await findValidMovieForCell(rowRules[r], colRules[c]);
         if (found) {
           // neutro (no suma a ningún jugador)
           placed[r][c] = { ...found, player: null };
@@ -605,9 +653,14 @@ async function completeBoard() {
     }
     setStatus("✅ Tablero completado (lo que se pudo encontrar).");
   } catch (e) {
-    console.error(e);
-    setStatus("ERROR ❌ " + e.message);
+  console.error(e);
+  setStatus("ERROR ❌ " + e.message);
+
+  if (!gameOver) {
+    startTurnTimer();
   }
+}
+``
 }
 
 async function onPickMovie(movieId, title, poster) {
@@ -659,7 +712,15 @@ async function onPickMovie(movieId, title, poster) {
     if (okRow && okCol) {
   const playedBy = currentPlayer;
 
-  placed[r][c] = { id: movieId, title: title || full.title, poster, player: playedBy };
+  const year = (full.release_date || "").slice(0, 4) || "";
+
+  placed[r][c] = {
+    id: movieId,
+    title: title || full.title,
+    poster,
+    year,
+    player: playedBy
+  };
   selectedCell = null;
   renderBoard();
   const w = checkWinner();
@@ -701,14 +762,26 @@ async function onPickMovie(movieId, title, poster) {
   renderBoard();
 
   let msg = "❌ No válida. Falló: ";
-  if (!okRow && !okCol) msg += "fila y columna";
-  else if (!okRow) msg += "fila";
-  else msg += "columna";
+  let extra = "";
+
+  if (!okRow && !okCol) {
+    msg += "fila y columna";
+
+    const rowExtra = !okRow ? getDecadeFailureDetail(full, rowRules[r], "la fila") : "";
+    const colExtra = !okCol ? getDecadeFailureDetail(full, colRules[c], "la columna") : "";
+    extra = `${rowExtra}${colExtra}`;
+  } else if (!okRow) {
+    msg += "fila";
+    extra = getDecadeFailureDetail(full, rowRules[r], "la fila");
+  } else {
+    msg += "columna";
+    extra = getDecadeFailureDetail(full, colRules[c], "la columna");
+  }
 
   // TURNO CAMBIA SIEMPRE
   switchTurn();
 
-  setStatus(`${msg}. ${currentPlayer === "blue" ? "Turno Azul 🔵" : "Turno Rojo 🔴"}.`);
+  setStatus(`${msg}${extra}. ${currentPlayer === "blue" ? "Turno Azul 🔵" : "Turno Rojo 🔴"}.`);
 }
 
   } catch (e) {
@@ -726,7 +799,9 @@ async function onPickMovie(movieId, title, poster) {
 const ACTOR_NAMES = [
   "Al Pacino", "Robert De Niro", "Brad Pitt", "Tom Hanks", "Leonardo DiCaprio",
   "Scarlett Johansson", "Natalie Portman", "Morgan Freeman", "Johnny Depp", "Meryl Streep",
-  "Tom Cruise", "Marlon Brando", "Harrison Ford", "Matt Damon", "Clint Eastwood", "Charlie Chaplin"
+  "Tom Cruise", "Marlon Brando", "Harrison Ford", "Matt Damon", "Clint Eastwood", "Charlie Chaplin",
+  "Willem Dafoe", "Jack Nicholson", "Samuel L. Jackson", "Edward Norton", "Russel Crowe",
+  "Jim Carrey", "Joe Pesci"
 ];
 
 const DIRECTOR_NAMES = [
@@ -914,20 +989,6 @@ function pick3Rules(forbiddenKeys = new Set()) {
 
 async function generateNewGame(minPerCell = 5, maxAttempts = 40) {
 
-  async function actorDirectedPairExists(actorId, directorId) {
-  const url =
-    `https://api.themoviedb.org/3/discover/movie?` +
-    `api_key=${API_KEY}` +
-    `&with_cast=${actorId}` +
-    `&with_crew=${directorId}` +
-    `&with_job=Director` + 
-    `&language=es-ES&page=1`;
-
-  const res = await fetch(url);
-  const data = await res.json();
-  return (data.total_results || 0) > 0;
-}
-
   await buildPersonPools();
 
   setStatus("Generando nueva partida (buscando categorías jugables)...");
@@ -953,35 +1014,13 @@ async function generateNewGame(minPerCell = 5, maxAttempts = 40) {
 
     for (const rr of rows) {
       for (const cc of cols) {
-        async function actorDirectedPairExists(actorId, directorId) {
-        const url =
-        `https://api.themoviedb.org/3/discover/movie` +
-        `?api_key=${API_KEY}` +
-        `&with_cast=${actorId}` +
-        `&with_crew=${directorId}` +
-        `&with_job=Director` +
-        `&language=es-ES&page=1`;
-
-        const res = await fetch(url);
-        const data = await res.json();
-        return (data.total_results || 0) > 0;
-      }
         if (areRulesIncompatible(rr, cc)) { ok = false; break; }
 
-        // PATCH: evitar actor + director imposibles en la vida real
-        if (rr.type === "castIncludes" && cc.type === "directedBy") {
-          const exists = await actorDirectedPairExists(rr.personId, cc.personId);
-          if (!exists) { ok = false; break; }
+        const realMatches = await getRealMatchesForCell(rr, cc, minPerCell, 3, 20);
+        if (realMatches.length < minPerCell) {
+          ok = false;
+          break;
         }
-
-        if (rr.type === "directedBy" && cc.type === "castIncludes") {
-          const exists = await actorDirectedPairExists(cc.personId, rr.personId);
-          if (!exists) { ok = false; break; }
-}
-
-        const p = mergeDiscoverParams(ruleToDiscoverParams(rr), ruleToDiscoverParams(cc));
-        const count = await discoverCount(p);
-        if (count < minPerCell) { ok = false; break; }
       }
       if (!ok) break;
     }
@@ -1142,6 +1181,4 @@ renderBoard();
 
 updateTurnInfo();
 updateScoreInfo();
-
 applyTheme();
-
